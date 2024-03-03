@@ -1,7 +1,15 @@
 import express, { Express, Request, Response, Router } from "express";
-import { getAllRooms, getAvailableRoom, getAvailableRoomTypes } from "./util";
+import { getAllRooms, getAvailableRoom } from "./util";
 import { v4 as uuidv4 } from "uuid";
 import cors from "cors";
+import {
+  createReservation,
+  getAvailableRoomTypes,
+  getAvailableRooms,
+  getReservation,
+  getReservations,
+  updateReservation,
+} from "./dao";
 
 const app: Express = express();
 const router: Router = express.Router();
@@ -16,19 +24,19 @@ export const roomReservations: { [id: string]: Reservation } = {};
 // POST /reservations
 router.post(
   "/",
-  (
+  async (
     req: Request<NewReservationRequest>,
     res: Response<Reservation | NewReservationError>
   ) => {
     const payload = req.body;
     console.log("Request received by POST /reservations", payload);
     // Check if room is available for the given dates
-    const availableRoom = getAvailableRoom(
+    const availableRooms = await getAvailableRooms(
       payload.checkinDate,
       payload.checkoutDate,
       payload.roomType
     );
-    if (!availableRoom) {
+    if (availableRooms.length == 0) {
       return res.status(400).send({
         http: "NotFound",
         body: "No rooms available for the given dates and type",
@@ -39,19 +47,20 @@ router.post(
     const reservation = {
       id: uuidv4(),
       user: payload.user,
-      room: availableRoom,
+      room: availableRooms[0].number,
       checkinDate: payload.checkinDate,
       checkoutDate: payload.checkoutDate,
     };
 
+    await createReservation(reservation);
     // Add reservation to the map
-    roomReservations[reservation.id] = reservation;
+    //roomReservations[reservation.id] = reservation;
 
     res.json(reservation);
   }
 );
 
-router.get("/roomTypes", (req: Request, res) => {
+router.get("/roomTypes", async (req: Request, res) => {
   console.log("Request received by GET /reservations/roomTypes", req.query);
   const { checkinDate, checkoutDate, guestCapacity } = req.query;
 
@@ -62,7 +71,12 @@ router.get("/roomTypes", (req: Request, res) => {
 
   // Call the function to get available room types
   try {
-    const roomTypes = getAvailableRoomTypes(
+    // const roomTypes = getAvailableRoomTypes(
+    //   checkinDate.toString(),
+    //   checkoutDate.toString(),
+    //   parseInt(guestCapacity.toString(), 10)
+    // );
+    const roomTypes = await getAvailableRoomTypes(
       checkinDate.toString(),
       checkoutDate.toString(),
       parseInt(guestCapacity.toString(), 10)
@@ -73,31 +87,50 @@ router.get("/roomTypes", (req: Request, res) => {
   }
 });
 
-router.get("/users/:userId", (req: Request, res: Response<Reservation[]>) => {
-  const userId = req.params.userId;
-  const reservations: Reservation[] = Object.values(roomReservations);
-  return res.json(reservations.filter((r) => r.user.id === userId));
-});
+router.get(
+  "/users/:userId",
+  async (req: Request, res: Response<Reservation[]>) => {
+    const userId = req.params.userId;
+    const reservations = await getReservations(userId);
+    const resp = reservations.map(
+      (reservation) => reservation.json_build_object
+    );
+    return res.json(resp);
+  }
+);
 
 router.put(
   "/:reservationId",
-  (req: Request, res: Response<Reservation | UpdateReservationError>) => {
+  async (
+    req: Request,
+    res: Response<Reservation | UpdateReservationError | null>
+  ) => {
     const reservationId = req.params.reservationId;
     const { checkinDate, checkoutDate }: UpdateReservationRequest = req.body;
-    if (!roomReservations[reservationId]) {
+    // if (!roomReservations[reservationId]) {
+    //   res.json({ http: "NotFound", body: "Reservation not found" });
+    // }
+    const reservation = await getReservation(reservationId);
+    if (reservation == null) {
       res.json({ http: "NotFound", body: "Reservation not found" });
+    } else {
+      const rooms = await getAvailableRooms(
+        checkinDate,
+        checkoutDate,
+        reservation.room.type.name
+      );
+      if (rooms.length == 0) {
+        res.json({ http: "NotFound", body: "No rooms available" });
+      }
+      const updatedReservation = await updateReservation(
+        reservation.id,
+        checkinDate,
+        checkoutDate
+      );
+      // roomReservations[reservationId].checkinDate = checkinDate;
+      // roomReservations[reservationId].checkoutDate = checkoutDate;
+      res.json(updatedReservation);
     }
-    const room = getAvailableRoom(
-      checkinDate,
-      checkoutDate,
-      roomReservations[reservationId].room.type.name
-    );
-    if (!room) {
-      res.json({ http: "NotFound", body: "No rooms available" });
-    }
-    roomReservations[reservationId].checkinDate = checkinDate;
-    roomReservations[reservationId].checkoutDate = checkoutDate;
-    res.json(roomReservations[reservationId]);
   }
 );
 

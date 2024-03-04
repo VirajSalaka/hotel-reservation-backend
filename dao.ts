@@ -1,5 +1,9 @@
 import { getClient } from "./postgresql";
 
+/**
+ * getAllRooms returns all the rooms
+ * @returns Promise<Room[]>
+ */
 export async function getAllRooms(): Promise<Room[]> {
   const client = await getClient();
   try {
@@ -21,6 +25,15 @@ export async function getAllRooms(): Promise<Room[]> {
   }
 }
 
+/**
+ * getAvailableRoomTypes returns available room
+ * types for a given date range for a given guest capacity.
+ *
+ * @param checkInDate - CheckIn Date
+ * @param checkOutDate - CheckOut Date
+ * @param guestCapacity - Guest capacity
+ * @returns
+ */
 export async function getAvailableRoomTypes(
   checkInDate: string,
   checkOutDate: string,
@@ -30,17 +43,19 @@ export async function getAvailableRoomTypes(
   try {
     const result = await client.query(
       `SELECT rt.id, rt.name, rt.guest_capacity, rt.price
-    FROM room_type rt
-    WHERE rt.guest_capacity >= $1
-    AND rt.id NOT IN (
-        SELECT r.type
-        FROM room r
-        JOIN reservation res ON r.number = res.room
-        WHERE (
-            $2 <= res.checkout_date
-            AND $3 >= res.checkin_date
-        )
-    )
+      FROM room_type rt
+      WHERE rt.guest_capacity >= $1
+      AND rt.id IN (
+          SELECT r.type
+          FROM room r
+          WHERE r.type = rt.id
+          AND r.number NOT IN (
+              SELECT res.room
+              FROM reservation res
+              WHERE $2 <= res.checkout_date
+              AND $3 >= res.checkin_date
+          )
+      );      
     `,
       [guestCapacity, checkInDate, checkOutDate]
     );
@@ -50,6 +65,15 @@ export async function getAvailableRoomTypes(
   }
 }
 
+/**
+ * getAvailableRooms returns a list of available
+ * rooms for a given data range and for a given room type.
+ *
+ * @param checkInDate - CheckIn Date
+ * @param checkOutDate - CheckOut Date
+ * @param roomType - Type of the room
+ * @returns
+ */
 export async function getAvailableRooms(
   checkInDate: string,
   checkOutDate: string,
@@ -84,15 +108,21 @@ export async function getAvailableRooms(
   }
 }
 
+/**
+ * createReservation creates a reservation
+ *
+ * @param reservation
+ * @returns
+ */
 export async function createReservation(reservation: Reservation) {
   const client = await getClient();
   const { id, room, checkinDate, checkoutDate, user } = reservation;
   try {
     const result = await client.query(
-      `INSERT INTO reservation ("id", "room", "checkin_date", "checkout_date", "user", "created_at", "updated_at")
-    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+      `INSERT INTO reservation ("id", "room", "checkin_date", "checkout_date", "user", "user_info", "created_at", "updated_at")
+    VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
     `,
-      [id, room, checkinDate, checkoutDate, user.id]
+      [id, room, checkinDate, checkoutDate, user.id, user]
     );
     return result.rows;
   } finally {
@@ -100,6 +130,13 @@ export async function createReservation(reservation: Reservation) {
   }
 }
 
+/**
+ * getReservations returns a list of reservations
+ * for a given user.
+ *
+ * @param userId
+ * @returns
+ */
 export async function getReservations(userId: string) {
   const client = await getClient();
   try {
@@ -116,9 +153,10 @@ export async function getReservations(userId: string) {
                   'price', rt.price
               )
           ),
+          'user', res.user_info::json,
           'checkinDate', res.checkin_date,
           'checkoutDate', res.checkout_date
-      )
+      ) AS reservation
   FROM 
       reservation res
   JOIN 
@@ -137,16 +175,40 @@ export async function getReservations(userId: string) {
   }
 }
 
-export async function getReservation(
-  reservationId: string
-): Promise<Reservation | null> {
+/**
+ * getReservation returns the reservation data for a given reservationId.
+ *
+ * @param reservationId
+ * @returns
+ */
+export async function getReservation(reservationId: string) {
   const client = await getClient();
   try {
     const result = await client.query(
-      `SELECT *
-      FROM reservation
-      WHERE "id" = $1;
-      
+      `SELECT 
+      json_build_object(
+          'id', res.id,
+          'room', json_build_object(
+              'number', r.number,
+              'type', json_build_object(
+                  'number', r.number,
+                  'name', rt.name,
+                  'guestCapacity', rt.guest_capacity,
+                  'price', rt.price
+              )
+          ),
+          'user', res.user_info::json,
+          'checkinDate', res.checkin_date,
+          'checkoutDate', res.checkout_date
+      ) AS reservation
+  FROM 
+      reservation res
+  JOIN 
+      room r ON res.room = r.number
+  JOIN 
+      room_type rt ON r.type = rt.id
+  WHERE 
+      res.id = $1;
     `,
       [reservationId]
     );
@@ -159,6 +221,14 @@ export async function getReservation(
   }
 }
 
+/**
+ * updateReservation updates the reservation.
+ *
+ * @param reservationId - Reservation ID
+ * @param checkInDate - CheckIn date
+ * @param checkOutDate- CheckOut date
+ * @returns
+ */
 export async function updateReservation(
   reservationId: string,
   checkInDate: string,
@@ -170,11 +240,31 @@ export async function updateReservation(
       `UPDATE reservation
       SET "checkin_date" = $1, "checkout_date" = $2
       WHERE "id" = $3;
-       
       `,
       [checkInDate, checkOutDate, reservationId]
     );
     return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * deleteReservation deletes the reservation.
+ *
+ * @param reservationId - Reservation Id
+ * @returns
+ */
+export async function deleteReservation(reservationId: string) {
+  const client = await getClient();
+  try {
+    const result = await client.query(
+      `DELETE FROM reservation
+      WHERE id = $1;
+      `,
+      [reservationId]
+    );
+    return result;
   } finally {
     client.release();
   }

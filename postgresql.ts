@@ -1,17 +1,17 @@
 import { Pool, PoolClient } from "pg";
+import dotenv from "dotenv";
 
-// process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+dotenv.config();
 
 // Database connection details
 const pool = new Pool({
-  user: "avnadmin",
-  host: "pg-b3127d1c-180f-4696-9aca-90bc5224d4d8-hotelre2934851480-chore.a.aivencloud.com",
-  database: "defaultdb",
-  password: "AVNS_4E7YG8q89EZ0HR2cbFE",
-  port: 26075,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT || "5432"), // Default port is 5432 if DB_PORT is not defined
   ssl: {
-    // SSL options
-    rejectUnauthorized: false, // Set to true if you want to enforce SSL verification
+    rejectUnauthorized: false,
   },
 });
 

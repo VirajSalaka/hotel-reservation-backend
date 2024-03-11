@@ -1,7 +1,8 @@
-INSERT INTO room_type (name, guest_capacity, price) VALUES ('Single', 1, 80);
-INSERT INTO room_type (name, guest_capacity, price) VALUES ('Double', 2, 120);
-INSERT INTO room_type (name, guest_capacity, price) VALUES ('Family', 4, 200);
-INSERT INTO room_type (name, guest_capacity, price) VALUES ('Suite', 4, 300);
+ INSERT INTO room_type (id, name, guest_capacity, price) VALUES (1,'Single', 1, 80);
+ INSERT INTO room_type (id, name, guest_capacity, price) VALUES (2, 'Double', 2, 120);
+ INSERT INTO room_type (id, name, guest_capacity, price) VALUES (3, 'Family', 4, 200);
+ INSERT INTO room_type (id, name, guest_capacity, price) VALUES (4, 'Suite', 4, 300);
+
 
 INSERT INTO room (number, type) VALUES (101, 1);
 INSERT INTO room (number, type) VALUES (102, 1);

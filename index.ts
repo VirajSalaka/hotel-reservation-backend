@@ -10,7 +10,7 @@ import {
   getReservation,
   getReservations,
   updateReservation,
-} from "./dao";
+} from "./inmemorydao";
 
 const app: Express = express();
 const router: Router = express.Router();
@@ -93,7 +93,7 @@ router.get(
     try {
       const userId = req.params.userId;
       const reservations = await getReservations(userId);
-      const resp = reservations.map((reservation) => reservation.reservation);
+      const resp = reservations.map((reservation: { reservation: any; }) => reservation.reservation);
       return res.json(resp);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });

@@ -21,7 +21,7 @@ export async function getAllRooms(): Promise<Room[]> {
           room_type rt ON r.type = rt.id;`);
       return result.rows;
     } finally {
-      client.release();
+        client.end();
     }
   }
   
@@ -42,18 +42,17 @@ export async function getAllRooms(): Promise<Room[]> {
     const client = await getClient();
     try {
       const result = await client.query(
-        `SELECT rt.id, rt.name, rt.guest_capacity, rt.price
-        FROM room_type rt
-        WHERE rt.guest_capacity >= $1
-        AND rt.id IN (
-            SELECT r.type
-            FROM room r
-            WHERE r.type = rt.id
-            AND r.number NOT IN (
-                SELECT res.room
-                FROM reservation res
-                WHERE $2 <= res.checkout_date
-                AND $3 >= res.checkin_date
+        `SELECT room_type.id, room_type.name, room_type.guest_capacity, room_type.price
+        FROM room_type
+        WHERE room_type.guest_capacity >= $1
+        AND room_type.id IN (
+            SELECT room.type
+            FROM room
+            WHERE room.number NOT IN (
+                SELECT reservation.room
+                FROM reservation
+                WHERE $2 <= reservation.checkout_date
+                AND $3 >= reservation.checkin_date
             )
         );      
       `,
@@ -61,7 +60,7 @@ export async function getAllRooms(): Promise<Room[]> {
       );
       return result.rows;
     } finally {
-      client.release();
+        client.end();
     }
   }
   
@@ -104,7 +103,9 @@ export async function getAllRooms(): Promise<Room[]> {
       );
       return result.rows;
     } finally {
-      client.release();
+        if (client) {
+            client.end();
+        }
     }
   }
   
@@ -126,7 +127,7 @@ export async function getAllRooms(): Promise<Room[]> {
       );
       return result.rows;
     } finally {
-      client.release();
+        client.end();
     }
   }
   
@@ -171,7 +172,7 @@ export async function getAllRooms(): Promise<Room[]> {
       );
       return result.rows;
     } finally {
-      client.release();
+        client.end();
     }
   }
   
@@ -217,7 +218,7 @@ export async function getAllRooms(): Promise<Room[]> {
       }
       return result.rows[0];
     } finally {
-      client.release();
+        client.end();
     }
   }
   
@@ -245,7 +246,7 @@ export async function getAllRooms(): Promise<Room[]> {
       );
       return result.rows[0];
     } finally {
-      client.release();
+        client.end();
     }
   }
   
@@ -266,7 +267,6 @@ export async function getAllRooms(): Promise<Room[]> {
       );
       return result;
     } finally {
-      client.release();
+        client.end();
     }
   }
-  

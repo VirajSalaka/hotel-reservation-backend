@@ -88,8 +88,9 @@ INSERT INTO room (number, type) VALUES (406, 4);`);
 
 const {Client} = db.adapters.createPg();
 // Function to acquire a client from the pool
-export function getClient(): Promise<typeof Client> {
-    return Client.connect();
+export async function getClient(): Promise<typeof Client> {
+    const client = new Client()
+    return await client.connect()  
   }
 
 // Export the pool for direct query execution if needed

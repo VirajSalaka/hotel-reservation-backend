@@ -80,24 +80,18 @@ export async function getAllRooms(): Promise<Room[]> {
   ) {
     const client = await getClient();
     try {
-      const result = await client.query(
-        `WITH room_type_id AS (
-          SELECT id
-          FROM room_type
-          WHERE name = $1
-      )
-      SELECT r.number
-      FROM room r
-      CROSS JOIN room_type_id
-      WHERE r.type = room_type_id.id
-      AND r.number NOT IN (
-          SELECT res.room
-          FROM reservation res
+      const result = await client.query( // TODO: (Check this query)
+        `SELECT room.number
+      FROM room, room_type
+      WHERE room.type = room_type.id
+      AND room.number NOT IN (
+          SELECT reservation.room
+          FROM reservation
           WHERE (
-              $2 < res.checkout_date
-              AND $3 > res.checkin_date
+              $2 < reservation.checkout_date
+              AND $3 > reservation.checkin_date
           )
-      );
+      ) AND room_type.name = $1;
             `,
         [roomType, checkInDate, checkOutDate]
       );

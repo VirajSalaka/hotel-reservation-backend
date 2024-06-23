@@ -114,7 +114,7 @@ export async function getAllRooms(): Promise<Room[]> {
     const { id, room, checkinDate, checkoutDate, user } = reservation;
     try {
       const result = await client.query(
-        `INSERT INTO reservation ("id", "room", "checkin_date", "checkout_date", "user", "user_info", "created_at", "updated_at")
+        `INSERT INTO reservation ("id", "room", "checkin_date", "checkout_date", "user_id", "user_info", "created_at", "updated_at")
       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
       `,
         [id, room, checkinDate, checkoutDate, user.id, user]
@@ -137,34 +137,34 @@ export async function getAllRooms(): Promise<Room[]> {
     try {
       const result = await client.query(
         `SELECT 
-        json_build_object(
-            'id', res.id,
-            'room', json_build_object(
-                'number', r.number,
-                'type', json_build_object(
-                    'number', r.number,
-                    'name', rt.name,
-                    'guestCapacity', rt.guest_capacity,
-                    'price', rt.price
-                )
-            ),
-            'user', res.user_info::json,
-            'checkinDate', res.checkin_date,
-            'checkoutDate', res.checkout_date
-        ) AS reservation
-    FROM 
-        reservation res
-    JOIN 
-        room r ON res.room = r.number
-    JOIN 
-        room_type rt ON r.type = rt.id
-    WHERE 
-        res.user = $1;
-    
-    `,
+        reservation.id,  reservation.user_id, room.number, room_type.name, room_type.guest_capacity, room_type.price, reservation.user_info, reservation.checkin_date, reservation.checkout_date
+    FROM reservation, room, room_type 
+    WHERE reservation.room = room.number AND room.type = room_type.id AND
+    reservation.user_id = '06aa3ef9-a0c5-4455-84ab-1c6075652f42'`,
         [userId]
       );
-      return result.rows;
+      console.log(result.rows)
+
+    const customJson = result.rows.map((row: { id: any; user_id: any; number: any; name: any; guest_capacity: any; price: any; user_info: any; checkin_date: any; checkout_date: any; }) => {
+      return {
+        reservation: {
+            id: row.id,
+        room: {
+        number: row.number,
+        type: {
+          number: row.number,
+          name: row.name,
+          guestCapacity: row.guest_capacity,
+          price: row.price
+        }
+        },
+        user: row.user_info,
+        checkinDate: row.checkin_date,
+        checkoutDate: row.checkout_date
+        }
+      };
+    });
+    return customJson;
     } finally {
         client.end();
     }

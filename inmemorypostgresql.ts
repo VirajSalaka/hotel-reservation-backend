@@ -29,7 +29,7 @@ CREATE TABLE "reservation"(
     "room" INT NOT NULL,
     "checkin_date" DATE NOT NULL,
     "checkout_date" DATE NOT NULL,
-    "user" VARCHAR(255) NOT NULL,
+    "user_id" VARCHAR(255) NOT NULL,
     "user_info" TEXT NOT NULL,
     "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

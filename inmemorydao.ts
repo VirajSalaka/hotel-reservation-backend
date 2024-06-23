@@ -137,10 +137,15 @@ export async function getAllRooms(): Promise<Room[]> {
     try {
       const result = await client.query(
         `SELECT 
-        reservation.id,  reservation.user_id, room.number, room_type.name, room_type.guest_capacity, room_type.price, reservation.user_info, reservation.checkin_date, reservation.checkout_date
-    FROM reservation, room, room_type 
-    WHERE reservation.room = room.number AND room.type = room_type.id AND
-    reservation.user_id = '06aa3ef9-a0c5-4455-84ab-1c6075652f42'`,
+        reservation.id, room.number, room_type.name, room_type.guest_capacity, room_type.price, reservation.user_info, reservation.checkin_date, reservation.checkout_date
+    FROM 
+        reservation
+    JOIN 
+        room ON reservation.room = room.number
+    JOIN 
+        room_type ON room.type = room_type.id
+    WHERE 
+        reservation.user_id = '06aa3ef9-a0c5-4455-84ab-1c6075652f42'`,
         [userId]
       );
       console.log(result.rows)
@@ -181,36 +186,39 @@ export async function getAllRooms(): Promise<Room[]> {
     try {
       const result = await client.query(
         `SELECT 
-        json_build_object(
-            'id', res.id,
-            'room', json_build_object(
-                'number', r.number,
-                'type', json_build_object(
-                    'number', r.number,
-                    'name', rt.name,
-                    'guestCapacity', rt.guest_capacity,
-                    'price', rt.price
-                )
-            ),
-            'user', res.user_info::json,
-            'checkinDate', res.checkin_date,
-            'checkoutDate', res.checkout_date
-        ) AS reservation
+        reservation.id, room.number, room_type.name, room_type.guest_capacity, room_type.price, reservation.user_info, reservation.checkin_date, reservation.checkout_date
     FROM 
-        reservation res
+        reservation
     JOIN 
-        room r ON res.room = r.number
+        room ON reservation.room = room.number
     JOIN 
-        room_type rt ON r.type = rt.id
+        room_type ON room.type = room_type.id
     WHERE 
-        res.id = $1;
+        reservation.id = $1;
       `,
         [reservationId]
       );
       if (result.rowCount == 0) {
         return null;
       }
-      return result.rows[0];
+      const row = result.rows[0];
+      return {
+        reservation: {
+            id: row.id,
+        room: {
+        number: row.number,
+        type: {
+          number: row.number,
+          name: row.name,
+          guestCapacity: row.guest_capacity,
+          price: row.price
+        }
+        },
+        user: row.user_info,
+        checkinDate: row.checkin_date,
+        checkoutDate: row.checkout_date
+        }
+      };
     } finally {
         client.end();
     }

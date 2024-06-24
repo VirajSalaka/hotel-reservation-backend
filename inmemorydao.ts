@@ -145,7 +145,7 @@ export async function getAllRooms(): Promise<Room[]> {
     JOIN 
         room_type ON room.type = room_type.id
     WHERE 
-        reservation.user_id = '06aa3ef9-a0c5-4455-84ab-1c6075652f42'`,
+        reservation.user_id = $1`,
         [userId]
       );
       console.log(result.rows)

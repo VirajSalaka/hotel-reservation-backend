@@ -163,7 +163,7 @@ export async function getAllRooms(): Promise<Room[]> {
           price: row.price
         }
         },
-        user: row.user_info,
+        user: JSON.parse(row.user_info),
         checkinDate: row.checkin_date,
         checkoutDate: row.checkout_date
         }
@@ -214,7 +214,7 @@ export async function getAllRooms(): Promise<Room[]> {
           price: row.price
         }
         },
-        user: row.user_info,
+        user: JSON.parse(row.user_info),
         checkinDate: row.checkin_date,
         checkoutDate: row.checkout_date
         }
